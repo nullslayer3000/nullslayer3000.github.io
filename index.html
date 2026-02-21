@@ -1,33 +1,26 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>FRT 시트 알람</title>
     <style>
         :root { --primary: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --secondary: #8E8E93; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-top: env(safe-area-inset-top); }
-        
         .container { max-width: 500px; margin: auto; }
-        
-        /* 실시간 시간 표시 (MainActivity 스타일) */
         .current-time-bar { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 10px; text-align: center; font-variant-numeric: tabular-nums; }
-
-        /* 메인 타이머 카드 */
+        .tab-menu { display: flex; background: #E3E3E8; border-radius: 12px; padding: 3px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; text-align: center; padding: 10px 0; font-size: 15px; font-weight: bold; color: var(--secondary); border-radius: 10px; cursor: pointer; border: none; background: transparent; transition: 0.2s; }
+        .tab-btn.active { background: white; color: var(--text); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
         .card { background: var(--card); border-radius: 20px; padding: 25px 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
         #countdown-label { font-size: 14px; color: var(--secondary); margin-bottom: 5px; font-weight: 600; }
         #timer-text { font-size: 60px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; margin: 5px 0; letter-spacing: -1px; }
-        #current-task { font-size: 17px; font-weight: bold; color: #333; margin-top: 5px; }
-
-        /* 선택 그룹 */
+        #current-task { font-size: 17px; font-weight: bold; color: #333; margin-top: 5px; min-height: 1.2em; }
         .label { font-size: 13px; font-weight: bold; color: var(--secondary); margin: 20px 0 8px 5px; display: block; }
         .radio-group { display: flex; background: #E3E3E8; border-radius: 12px; padding: 2px; margin-bottom: 10px; }
         .radio-group label { flex: 1; text-align: center; padding: 12px 0; font-size: 14px; border-radius: 10px; cursor: pointer; }
         .radio-group input { display: none; }
         .radio-group input:checked + label { background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); font-weight: bold; color: var(--primary); }
-
-        /* 스케줄 리스트 */
         .schedule-card { background: var(--card); border-radius: 16px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .schedule-item { padding: 12px 15px; border-bottom: 0.5px solid #F2F2F7; display: flex; justify-content: space-between; font-size: 14px; }
         .schedule-item:last-child { border-bottom: none; }
@@ -38,6 +31,10 @@
 
     <div class="container">
         <div class="current-time-bar" id="realtime-clock">00:00:00</div>
+        <div class="tab-menu">
+            <button class="tab-btn active" id="tab-rotation" onclick="setMode('rotation')">🔄 교대 근무</button>
+            <button class="tab-btn" id="tab-general" onclick="setMode('general')">⏱ 일반 근무</button>
+        </div>
 
         <div class="card">
             <div id="countdown-label">정보 업데이트 중...</div>
@@ -45,18 +42,20 @@
             <div id="current-task"></div>
         </div>
 
-        <span class="label">포지션</span>
-        <div class="radio-group">
-            <input type="radio" name="pos" id="lh" value="lh" checked><label for="lh">LH</label>
-            <input type="radio" name="pos" id="rest" value="rest"><label for="rest">휴식</label>
-            <input type="radio" name="pos" id="rh" value="rh" checked><label for="rh">RH</label>
-            <input type="radio" name="pos" id="glass" value="glass"><label for="glass">글라스</label>
+        <div id="position-section">
+            <span class="label">포지션</span>
+            <div class="radio-group">
+                <input type="radio" name="pos" id="lh" value="lh" checked><label for="lh">LH</label>
+                <input type="radio" name="pos" id="rest" value="rest"><label for="rest">휴식</label>
+                <input type="radio" name="pos" id="rh" value="rh"><label for="rh">RH</label>
+                <input type="radio" name="pos" id="glass" value="glass"><label for="glass">글라스</label>
+            </div>
         </div>
 
-        <span class="label">근무</span>
+        <span class="label">근무조</span>
         <div class="radio-group">
-            <input type="radio" name="shift" id="day" value="day" checked><label for="day">주간</label>
-            <input type="radio" name="shift" id="night" value="night"><label for="night">야간</label>
+            <input type="radio" name="shift" id="day" value="day" checked><label for="day">☀️ 주간</label>
+            <input type="radio" name="shift" id="night" value="night"><label for="night">🌙 야간</label>
         </div>
 
         <span class="label">상세 스케줄</span>
@@ -66,7 +65,8 @@
     </div>
 
 <script>
-    // [데이터] Schedule.kt 데이터
+    let currentMode = 'rotation';
+
     const RAW_DATA = {
         lh: [
             {s:"06:50", e:"07:15", p:"LH"}, {s:"07:20", e:"07:45", p:"휴식"}, {s:"07:50", e:"08:15", p:"RH"}, {s:"08:20", e:"08:50", p:"글라스"},
@@ -107,104 +107,108 @@
             {s:"17:50", e:"18:15", p:"글라스", n:true}, {s:"18:20", e:"18:45", p:"LH", n:true}, {s:"18:50", e:"19:15", p:"휴식", n:true}, {s:"19:20", e:"19:50", p:"RH", n:true},
             {s:"19:50", e:"20:30", p:"저녁(휴식)", n:true}, {s:"20:30", e:"20:55", p:"글라스", n:true}, {s:"21:00", e:"21:25", p:"LH", n:true}, {s:"21:30", e:"21:55", p:"휴식", n:true},
             {s:"22:00", e:"22:30", p:"RH", n:true}, {s:"22:40", e:"23:00", p:"글라스", n:true}, {s:"23:05", e:"23:25", p:"LH", n:true}, {s:"23:30", e:"23:50", p:"휴식", n:true}, {s:"23:55", e:"00:20", p:"RH", n:true}
+        ],
+        general: [
+            {s:"06:50", e:"08:50", p:"오전 근무", n:false},
+            {s:"08:50", e:"09:00", p:"휴식", n:false},
+            {s:"09:00", e:"11:00", p:"오전 근무", n:false},
+            {s:"11:00", e:"11:40", p:"점심", n:false},
+            {s:"11:40", e:"13:40", p:"오후 근무", n:false},
+            {s:"13:40", e:"13:50", p:"휴식", n:false},
+            {s:"13:50", e:"15:25", p:"오후 근무", n:false},
+            {s:"15:35", e:"17:40", p:"야간 근무", n:true},
+            {s:"17:40", e:"17:50", p:"휴식", n:true},
+            {s:"17:50", e:"19:50", p:"야간 근무", n:true},
+            {s:"19:50", e:"20:30", p:"저녁", n:true},
+            {s:"20:30", e:"22:30", p:"심야 근무", n:true},
+            {s:"22:30", e:"22:40", p:"휴식", n:true},
+            {s:"22:40", e:"00:20", p:"심야 근무", n:true}
         ]
     };
 
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('tab-rotation').classList.toggle('active', mode === 'rotation');
+        document.getElementById('tab-general').classList.toggle('active', mode === 'general');
+        document.getElementById('position-section').style.display = mode === 'rotation' ? 'block' : 'none';
+        update();
+    }
+
     function update() {
         const now = new Date();
-        
-        // 1. 현재 실시간 시간 표시 (MainActivity 로직)
-        const clockStr = now.getHours().toString().padStart(2,'0') + ":" + 
-                         now.getMinutes().toString().padStart(2,'0') + ":" + 
-                         now.getSeconds().toString().padStart(2,'0');
+        const clockStr = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0');
         document.getElementById('realtime-clock').innerText = clockStr;
 
-        // 2. 타이머 및 스케줄 로직
         const nowMin = now.getHours() * 60 + now.getMinutes();
         const nowSec = now.getSeconds();
-        const pos = document.querySelector('input[name="pos"]:checked').value;
         const isNight = document.querySelector('input[name="shift"]:checked').value === "night";
-        const currentSchedule = RAW_DATA[pos].filter(item => isNight ? item.n : !item.n);
+        
+        let targetData = currentMode === 'general' ? RAW_DATA.general : RAW_DATA[document.querySelector('input[name="pos"]:checked').value];
+        const currentSchedule = targetData.filter(item => isNight ? item.n : !item.n);
 
-        let active = null;
-        let next = null;
+        let checkMin = nowMin;
+        if (isNight && nowMin < 360) checkMin += 1440;
 
-        currentSchedule.forEach((item, idx) => {
-            const [sh, sm] = item.s.split(':').map(Number);
-            const [eh, em] = item.e.split(':').map(Number);
+        currentSchedule.forEach(item => {
+            let [sh, sm] = item.s.split(':').map(Number);
+            let [eh, em] = item.e.split(':').map(Number);
             let start = sh * 60 + sm;
             let end = eh * 60 + em;
+            if (isNight && start < 360) start += 1440;
+            if (isNight && end < 360) end += 1440;
             if (end < start) end += 1440;
-            let checkMin = nowMin;
-            if (isNight && nowMin < 360) checkMin += 1440;
-
-            if (checkMin >= start && checkMin < end) {
-                active = {...item, _end: end};
-                next = currentSchedule[idx + 1];
-            }
+            item._start = start; item._end = end;
         });
 
         const label = document.getElementById('countdown-label');
         const timer = document.getElementById('timer-text');
         const task = document.getElementById('current-task');
 
-        if (active) {
-            let diff = (active._end * 60) - (nowMin * 60 + nowSec);
-            if (isNight && nowMin < 360) diff = ((active._end - 1440) * 60) - (nowMin * 60 + nowSec);
-            if (diff < 0) diff += 86400;
-
-            const m = Math.floor(diff / 60);
-            const s = diff % 60;
-            timer.innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-
-            if (next && m < 5) {
-                if (next.p.includes("점심")) { label.innerText = "곧 점심 시간입니다"; task.innerText = ""; }
-                else if (next.p.includes("저녁")) { label.innerText = "곧 저녁 시간입니다"; task.innerText = ""; }
-                else { label.innerText = "남은 교대까지"; task.innerText = `현재: ${active.s}~${active.e} ${active.p}`; }
-            } else if (active.p.includes("점심") || active.p.includes("저녁")) {
-                label.innerText = "근무 시작까지";
-                task.innerText = `${active.p} 시간입니다. 식사 맛있게 하십시오.`;
-            } else if (active.p.includes("휴식")) {
-                label.innerText = "남은 교대까지";
-                task.innerText = "휴식 시간입니다";
-            } else {
-                label.innerText = "남은 교대까지";
-                task.innerText = `현재: ${active.s}~${active.e} ${active.p}`;
-            }
-        } else {
-            timer.innerText = "--:--";
-            label.innerText = "퇴근입니다. 오늘 하루도 고생 많으셨습니다.";
-            task.innerText = "";
+        const firstShift = currentSchedule[0];
+        const lastShift = currentSchedule[currentSchedule.length - 1];
+        
+        if (checkMin < firstShift._start || checkMin >= lastShift._end) {
+            timer.innerText = "--:--"; label.innerText = "퇴근입니다. 오늘 하루도 고생 많으셨습니다."; task.innerText = "";
+            renderList(currentSchedule, null); return; 
         }
 
-        renderList(currentSchedule, active);
+        let currentShift = currentSchedule.find(i => checkMin >= i._start && checkMin < i._end);
+
+        if (currentShift) {
+            let diffSec = (currentShift._end * 60) - (checkMin * 60 + nowSec);
+            timer.innerText = `${String(Math.floor(diffSec / 60)).padStart(2, '0')}:${String(diffSec % 60).padStart(2, '0')}`;
+            
+            // 문구 수정 로직
+            if (currentMode === 'general') {
+                if (currentShift.p.includes("점심") || currentShift.p.includes("저녁") || currentShift.p.includes("휴식")) {
+                    label.innerText = "다음 근무 시작까지";
+                    task.innerText = `${currentShift.p} 시간입니다.`;
+                } else {
+                    label.innerText = "다음 근무 시작까지"; // 일반 근무 시 모든 타이머 라벨을 요청하신 대로 변경
+                    task.innerText = `현재: ${currentShift.p} (${currentShift.s}~${currentShift.e})`;
+                }
+            } else {
+                label.innerText = "남은 교대까지";
+                task.innerText = `현재: ${currentShift.p} (${currentShift.s}~${currentShift.e})`;
+            }
+        }
+        renderList(currentSchedule, currentShift);
     }
 
-    function renderList(list, active) {
+    function renderList(list, currentShift) {
         const listDiv = document.getElementById('schedule-list');
         listDiv.innerHTML = list.map(item => `
-            <div class="schedule-item ${active && item.s === active.s ? 'active-now' : ''}">
+            <div class="schedule-item ${currentShift && item.s === currentShift.s ? 'active-now' : ''}">
                 <span>${item.s} ~ ${item.e}</span>
                 <span>${item.p}</span>
             </div>
         `).join('');
     }
 
-    document.querySelectorAll('input').forEach(input => {
-        input.addEventListener('change', () => {
-            localStorage.setItem(input.name, input.id);
-            update();
-        });
-        const saved = localStorage.getItem(input.name);
-        if (saved && document.getElementById(saved)) document.getElementById(saved).checked = true;
-    });
-
+    document.querySelectorAll('input').forEach(input => input.addEventListener('change', update));
     setInterval(update, 1000);
     update();
 </script>
 </body>
 </html>
-</body>
-
 </html>
-
