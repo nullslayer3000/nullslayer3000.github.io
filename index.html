@@ -3,41 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>FRT 시트 알람</title>
+    <title>FRT 시트 알람 PRO</title>
     <style>
-        :root { --primary: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --secondary: #8E8E93; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-top: env(safe-area-inset-top); }
-        .container { max-width: 500px; margin: auto; }
-        .current-time-bar { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 10px; text-align: center; font-variant-numeric: tabular-nums; }
-        .tab-menu { display: flex; background: #E3E3E8; border-radius: 12px; padding: 3px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; text-align: center; padding: 10px 0; font-size: 15px; font-weight: bold; color: var(--secondary); border-radius: 10px; cursor: pointer; border: none; background: transparent; transition: 0.2s; }
-        .tab-btn.active { background: white; color: var(--text); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-        .card { background: var(--card); border-radius: 20px; padding: 25px 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
-        #countdown-label { font-size: 14px; color: var(--secondary); margin-bottom: 5px; font-weight: 600; }
-        #timer-text { font-size: 60px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; margin: 5px 0; letter-spacing: -1px; }
-        #current-task { font-size: 17px; font-weight: bold; color: #333; margin-top: 5px; min-height: 1.2em; }
-        .label { font-size: 13px; font-weight: bold; color: var(--secondary); margin: 20px 0 8px 5px; display: block; }
-        .radio-group { display: flex; background: #E3E3E8; border-radius: 12px; padding: 2px; margin-bottom: 10px; }
-        .radio-group label { flex: 1; text-align: center; padding: 12px 0; font-size: 14px; border-radius: 10px; cursor: pointer; }
+        /* 기본 변수 (라이트 모드) */
+        :root {
+            --bg: #F2F2F7;
+            --card: #FFFFFF;
+            --text: #1C1C1E;
+            --secondary: #8E8E93;
+            --primary: #007AFF; 
+            --tab-bg: #E3E3E8;
+        }
+
+        /* 다크 모드 (일반) */
+        body.dark-mode {
+            --bg: #1C1C1E;
+            --card: #2C2C2E;
+            --text: #FFFFFF;
+            --secondary: #AEAEB2;
+            --tab-bg: #3A3A3C;
+        }
+
+        /* 다크 모드 (OLED) */
+        body.oled-mode {
+            --bg: #000000;
+            --card: #151515;
+            --text: #FFFFFF;
+            --secondary: #8E8E93;
+            --tab-bg: #222222;
+        }
+
+        /* 포인트 색상 테마 */
+        body.theme-orange { --primary: #FF9500; }
+        body.theme-red { --primary: #FF3B30; }
+        body.theme-magenta { --primary: #AF52DE; }
+        body.theme-blue { --primary: #007AFF; }
+
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; padding: 20px; 
+            transition: background 0.3s, color 0.3s;
+            padding-top: env(safe-area-inset-top);
+        }
+
+        .container { max-width: 500px; margin: auto; position: relative; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .current-time-bar { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .settings-btn { font-size: 26px; cursor: pointer; background: none; border: none; color: var(--text); padding: 5px; }
+
+        .tab-menu { display: flex; background: var(--tab-bg); border-radius: 14px; padding: 3px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; text-align: center; padding: 12px 0; font-size: 14px; font-weight: bold; color: var(--secondary); border-radius: 11px; cursor: pointer; border: none; background: transparent; transition: 0.2s; }
+        .tab-btn.active { background: var(--card); color: var(--text); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+
+        .card { background: var(--card); border-radius: 24px; padding: 30px 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        #countdown-label { font-size: 15px; color: var(--primary); margin-bottom: 8px; font-weight: 700; height: 1.2em; }
+        #timer-text { font-size: 64px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; margin: 5px 0; letter-spacing: -2px; }
+        #current-task { font-size: 16px; font-weight: 600; color: var(--text); opacity: 0.9; }
+
+        .label { font-size: 12px; font-weight: bold; color: var(--secondary); margin: 15px 0 8px 5px; display: block; }
+        .radio-group { display: flex; background: var(--tab-bg); border-radius: 12px; padding: 2px; margin-bottom: 10px; }
+        .radio-group label { flex: 1; text-align: center; padding: 10px 0; font-size: 13px; border-radius: 10px; cursor: pointer; color: var(--secondary); }
         .radio-group input { display: none; }
-        .radio-group input:checked + label { background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); font-weight: bold; color: var(--primary); }
-        .schedule-card { background: var(--card); border-radius: 16px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .schedule-item { padding: 12px 15px; border-bottom: 0.5px solid #F2F2F7; display: flex; justify-content: space-between; font-size: 14px; }
+        .radio-group input:checked + label { background: var(--card); box-shadow: 0 2px 6px rgba(0,0,0,0.1); font-weight: bold; color: var(--primary); }
+
+        .schedule-card { background: var(--card); border-radius: 18px; padding: 5px; margin-top: 10px; }
+        .schedule-item { padding: 14px 18px; border-bottom: 0.5px solid var(--tab-bg); display: flex; justify-content: space-between; font-size: 13px; }
         .schedule-item:last-child { border-bottom: none; }
-        .schedule-item.active-now { background: #EBF5FF; border-radius: 12px; color: var(--primary); font-weight: bold; }
+        .schedule-item.active-now { background: var(--tab-bg); border-radius: 14px; color: var(--primary); font-weight: bold; }
+
+        /* 설정 모달 */
+        #settings-modal { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+        }
+        .modal-content { background: var(--card); width: 85%; max-width: 350px; border-radius: 28px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-weight: 800; font-size: 18px; }
+        .close-btn { cursor: pointer; font-size: 24px; color: var(--secondary); }
     </style>
 </head>
-<body>
+<body class="theme-blue">
 
     <div class="container">
-        <div class="current-time-bar" id="realtime-clock">00:00:00</div>
+        <div class="header">
+            <div class="current-time-bar" id="realtime-clock">00:00:00</div>
+            <button class="settings-btn" onclick="toggleSettings(true)">⚙️</button>
+        </div>
+
         <div class="tab-menu">
             <button class="tab-btn active" id="tab-rotation" onclick="setMode('rotation')">🔄 교대 근무</button>
             <button class="tab-btn" id="tab-general" onclick="setMode('general')">⏱ 일반 근무</button>
         </div>
 
         <div class="card">
-            <div id="countdown-label">정보 업데이트 중...</div>
+            <div id="countdown-label">--</div>
             <div id="timer-text">00:00</div>
             <div id="current-task"></div>
         </div>
@@ -58,14 +119,38 @@
             <input type="radio" name="shift" id="night" value="night"><label for="night">🌙 야간</label>
         </div>
 
-        <span class="label">상세 스케줄</span>
+        <span class="label">오늘의 상세 일정</span>
         <div class="schedule-card">
             <div id="schedule-list"></div>
         </div>
     </div>
 
+    <div id="settings-modal" onclick="if(event.target == this) toggleSettings(false)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>환경 설정</span>
+                <span class="close-btn" onclick="toggleSettings(false)">✕</span>
+            </div>
+            
+            <span class="label">테마 모드</span>
+            <div class="radio-group">
+                <input type="radio" name="bg-mode" id="bg-light" value="light" checked onclick="saveAndApplyTheme()"><label for="bg-light">라이트</label>
+                <input type="radio" name="bg-mode" id="bg-dark" value="dark" onclick="saveAndApplyTheme()"><label for="bg-dark">다크</label>
+                <input type="radio" name="bg-mode" id="bg-oled" value="oled" onclick="saveAndApplyTheme()"><label for="bg-oled">OLED</label>
+            </div>
+
+            <span class="label">포인트 컬러</span>
+            <div class="radio-group">
+                <input type="radio" name="accent" id="acc-blue" value="blue" checked onclick="saveAndApplyTheme()"><label for="acc-blue">Blue</label>
+                <input type="radio" name="accent" id="acc-orange" value="orange" onclick="saveAndApplyTheme()"><label for="acc-orange">Org</label>
+                <input type="radio" name="accent" id="acc-red" value="red" onclick="saveAndApplyTheme()"><label for="acc-red">Red</label>
+                <input type="radio" name="accent" id="acc-magenta" value="magenta" onclick="saveAndApplyTheme()"><label for="acc-magenta">Mag</label>
+            </div>
+        </div>
+    </div>
+
 <script>
-    let currentMode = 'rotation';
+    let currentMode = localStorage.getItem('mode') || 'rotation';
 
     const RAW_DATA = {
         lh: [
@@ -109,25 +194,44 @@
             {s:"22:00", e:"22:30", p:"RH", n:true}, {s:"22:40", e:"23:00", p:"글라스", n:true}, {s:"23:05", e:"23:25", p:"LH", n:true}, {s:"23:30", e:"23:50", p:"휴식", n:true}, {s:"23:55", e:"00:20", p:"RH", n:true}
         ],
         general: [
-            {s:"06:50", e:"08:50", p:"오전 근무", n:false},
-            {s:"08:50", e:"09:00", p:"휴식", n:false},
-            {s:"09:00", e:"11:00", p:"오전 근무", n:false},
-            {s:"11:00", e:"11:40", p:"점심", n:false},
-            {s:"11:40", e:"13:40", p:"오후 근무", n:false},
-            {s:"13:40", e:"13:50", p:"휴식", n:false},
-            {s:"13:50", e:"15:25", p:"오후 근무", n:false},
-            {s:"15:35", e:"17:40", p:"야간 근무", n:true},
-            {s:"17:40", e:"17:50", p:"휴식", n:true},
-            {s:"17:50", e:"19:50", p:"야간 근무", n:true},
-            {s:"19:50", e:"20:30", p:"저녁", n:true},
-            {s:"20:30", e:"22:30", p:"심야 근무", n:true},
-            {s:"22:30", e:"22:40", p:"휴식", n:true},
-            {s:"22:40", e:"00:20", p:"심야 근무", n:true}
+            {s:"06:50", e:"08:50", p:"오전 근무", n:false}, {s:"08:50", e:"09:00", p:"휴식", n:false},
+            {s:"09:00", e:"11:00", p:"오전 근무", n:false}, {s:"11:00", e:"11:40", p:"점심", n:false},
+            {s:"11:40", e:"13:40", p:"오후 근무", n:false}, {s:"13:40", e:"13:50", p:"휴식", n:false},
+            {s:"13:50", e:"15:25", p:"오후 근무", n:false}, {s:"15:35", e:"17:40", p:"야간 근무", n:true},
+            {s:"17:40", e:"17:50", p:"휴식", n:true}, {s:"17:50", e:"19:50", p:"야간 근무", n:true},
+            {s:"19:50", e:"20:30", p:"저녁", n:true}, {s:"20:30", e:"22:30", p:"심야 근무", n:true},
+            {s:"22:30", e:"22:40", p:"휴식", n:true}, {s:"22:40", e:"00:20", p:"심야 근무", n:true}
         ]
     };
 
+    function toggleSettings(show) {
+        document.getElementById('settings-modal').style.display = show ? 'flex' : 'none';
+    }
+
+    function saveAndApplyTheme() {
+        const bg = document.querySelector('input[name="bg-mode"]:checked').value;
+        const acc = document.querySelector('input[name="accent"]:checked').value;
+        localStorage.setItem('theme-bg', bg);
+        localStorage.setItem('theme-acc', acc);
+        
+        document.body.className = '';
+        if (bg === 'dark') document.body.classList.add('dark-mode');
+        if (bg === 'oled') document.body.classList.add('oled-mode');
+        document.body.classList.add('theme-' + acc);
+    }
+
+    function loadSavedSettings() {
+        const bg = localStorage.getItem('theme-bg') || 'light';
+        const acc = localStorage.getItem('theme-acc') || 'blue';
+        document.getElementById('bg-' + bg).checked = true;
+        document.getElementById('acc-' + acc).checked = true;
+        saveAndApplyTheme();
+        setMode(currentMode);
+    }
+
     function setMode(mode) {
         currentMode = mode;
+        localStorage.setItem('mode', mode);
         document.getElementById('tab-rotation').classList.toggle('active', mode === 'rotation');
         document.getElementById('tab-general').classList.toggle('active', mode === 'general');
         document.getElementById('position-section').style.display = mode === 'rotation' ? 'block' : 'none';
@@ -141,21 +245,22 @@
 
         const nowMin = now.getHours() * 60 + now.getMinutes();
         const nowSec = now.getSeconds();
-        const isNight = document.querySelector('input[name="shift"]:checked').value === "night";
+        const isNight = document.querySelector('input[name="shift"]:checked').checked && document.querySelector('input[name="shift"]:checked').value === "night";
         
+        const shiftVal = document.querySelector('input[name="shift"]:checked').value;
         let targetData = currentMode === 'general' ? RAW_DATA.general : RAW_DATA[document.querySelector('input[name="pos"]:checked').value];
-        const currentSchedule = targetData.filter(item => isNight ? item.n : !item.n);
+        const currentSchedule = targetData.filter(item => shiftVal === "night" ? item.n : !item.n);
 
         let checkMin = nowMin;
-        if (isNight && nowMin < 360) checkMin += 1440;
+        if (shiftVal === "night" && nowMin < 360) checkMin += 1440;
 
         currentSchedule.forEach(item => {
             let [sh, sm] = item.s.split(':').map(Number);
             let [eh, em] = item.e.split(':').map(Number);
             let start = sh * 60 + sm;
             let end = eh * 60 + em;
-            if (isNight && start < 360) start += 1440;
-            if (isNight && end < 360) end += 1440;
+            if (shiftVal === "night" && start < 360) start += 1440;
+            if (shiftVal === "night" && end < 360) end += 1440;
             if (end < start) end += 1440;
             item._start = start; item._end = end;
         });
@@ -168,23 +273,30 @@
         const lastShift = currentSchedule[currentSchedule.length - 1];
         
         if (checkMin < firstShift._start || checkMin >= lastShift._end) {
-            timer.innerText = "--:--"; label.innerText = "퇴근입니다. 오늘 하루도 고생 많으셨습니다."; task.innerText = "";
+            timer.innerText = "--:--"; label.innerText = "OFF"; task.innerText = "오늘도 고생하셨습니다!";
             renderList(currentSchedule, null); return; 
         }
 
         let currentShift = currentSchedule.find(i => checkMin >= i._start && checkMin < i._end);
+        let nextIdx = currentSchedule.findIndex(i => checkMin >= i._start && checkMin < i._end) + 1;
+        let nextShift = currentSchedule[nextIdx];
 
         if (currentShift) {
             let diffSec = (currentShift._end * 60) - (checkMin * 60 + nowSec);
             timer.innerText = `${String(Math.floor(diffSec / 60)).padStart(2, '0')}:${String(diffSec % 60).padStart(2, '0')}`;
             
-            // 문구 수정 로직
             if (currentMode === 'general') {
                 if (currentShift.p.includes("점심") || currentShift.p.includes("저녁") || currentShift.p.includes("휴식")) {
                     label.innerText = "다음 근무 시작까지";
-                    task.innerText = `${currentShift.p} 시간입니다.`;
+                    task.innerText = `${currentShift.p} 시간 (${currentShift.s}~${currentShift.e})`;
                 } else {
-                    label.innerText = "다음 근무 시작까지"; // 일반 근무 시 모든 타이머 라벨을 요청하신 대로 변경
+                    if (diffSec <= 600 && nextShift) {
+                        if (nextShift.p.includes("점심") || nextShift.p.includes("저녁")) label.innerText = "곧 식사 시간입니다";
+                        else if (nextShift.p.includes("휴식")) label.innerText = "곧 쉬는 시간입니다";
+                        else label.innerText = "다음 근무 시작까지";
+                    } else {
+                        label.innerText = "다음 근무 시작까지";
+                    }
                     task.innerText = `현재: ${currentShift.p} (${currentShift.s}~${currentShift.e})`;
                 }
             } else {
@@ -206,9 +318,8 @@
     }
 
     document.querySelectorAll('input').forEach(input => input.addEventListener('change', update));
+    window.onload = loadSavedSettings;
     setInterval(update, 1000);
-    update();
 </script>
 </body>
-</html>
 </html>
